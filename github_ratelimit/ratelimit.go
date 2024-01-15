@@ -1,6 +1,7 @@
 package github_ratelimit
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -52,10 +53,13 @@ func (t *SecondaryRateLimitWaiter) RoundTrip(request *http.Request) (*http.Respo
 
 	resp, err := t.Base.RoundTrip(request)
 	if err != nil {
+		fmt.Println("1")
+		fmt.Println(err)
 		return resp, err
 	}
 
 	secondaryLimit := parseSecondaryLimitTime(resp)
+	fmt.Printf("secondaryLimit:%s\n", secondaryLimit)
 	if secondaryLimit == nil {
 		return resp, nil
 	}
@@ -69,6 +73,7 @@ func (t *SecondaryRateLimitWaiter) RoundTrip(request *http.Request) (*http.Respo
 	if !shouldRetry {
 		return resp, nil
 	}
+	fmt.Println("shouldRetry")
 
 	return t.RoundTrip(request)
 }
@@ -163,14 +168,19 @@ func (t *SecondaryRateLimitWaiter) triggerCallback(callback func(*CallbackContex
 // https://docs.github.com/en/rest/overview/resources-in-the-rest-api#secondary-rate-limits
 func parseSecondaryLimitTime(resp *http.Response) *time.Time {
 	if !isSecondaryRateLimit(resp) {
+		fmt.Println("not isSecondaryRateLimit")
 		return nil
 	}
 
 	if sleepUntil := parseRetryAfter(resp.Header); sleepUntil != nil {
+		fmt.Println("parseRetryAfter")
+		fmt.Println(*sleepUntil)
 		return sleepUntil
 	}
 
 	if sleepUntil := parseXRateLimitReset(resp); sleepUntil != nil {
+		fmt.Println("parseXRateLimitReset")
+		fmt.Println(*sleepUntil)
 		return sleepUntil
 	}
 
@@ -213,10 +223,12 @@ func parseXRateLimitReset(resp *http.Response) *time.Time {
 func httpHeaderIntValue(header http.Header, key string) (int64, bool) {
 	val := header.Get(key)
 	if val == "" {
+		fmt.Println("val is empty")
 		return 0, false
 	}
 	asInt, err := strconv.ParseInt(val, 10, 64)
 	if err != nil {
+		fmt.Println("fail strconv.ParseInt")
 		return 0, false
 	}
 	return asInt, true

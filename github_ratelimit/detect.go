@@ -3,6 +3,7 @@ package github_ratelimit
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -36,22 +37,31 @@ func isRateLimitStatus(statusCode int) bool {
 // isSecondaryRateLimit checks whether the response is a legitimate secondary rate limit.
 func isSecondaryRateLimit(resp *http.Response) bool {
 	if !isRateLimitStatus(resp.StatusCode) {
+		fmt.Println("not isRateLimitStatus")
 		return false
 	}
 
 	if resp.Header == nil {
+		fmt.Println("resp.Header is nil")
 		return false
 	}
 
 	// a primary rate limit
 	if remaining, ok := httpHeaderIntValue(resp.Header, HeaderXRateLimitRemaining); ok && remaining == 0 {
+		fmt.Println("ok")
+		fmt.Println(ok)
+		fmt.Println(remaining)
 		return false
+		// should be true?
+		// return true
 	}
 
 	// an authentic HTTP response (not a primary rate limit)
 	defer resp.Body.Close()
 	rawBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("io.ReadAll failed")
+		fmt.Println(err)
 		return false // unexpected error
 	}
 
@@ -60,9 +70,12 @@ func isSecondaryRateLimit(resp *http.Response) bool {
 
 	var body SecondaryRateLimitBody
 	if err := json.Unmarshal(rawBody, &body); err != nil {
+		fmt.Println("json.Unmarshal error")
+		fmt.Println(err)
 		return false // unexpected error
 	}
 	if !body.IsSecondaryRateLimit() {
+		fmt.Println("not body.IsSecondaryRateLimit()")
 		return false
 	}
 
